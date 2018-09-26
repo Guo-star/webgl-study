@@ -11,7 +11,9 @@
       margin: 0;
       padding: 0;
     }
-    html,body{
+
+    html,
+    body {
       width: 100%;
       height: 100%;
     }
@@ -29,6 +31,7 @@
 <body onload="threeStart()">
   <div id="canvas-frame"></div>
 </body>
+<script src="./stats.js"></script>
 <script src="./three.js"></script>
 <script>
   var canvas = document.getElementById("canvas-frame"),
@@ -36,6 +39,9 @@
     height = canvas.clientHeight;
   var renderer, camera, scene, light, cube;
 
+  var stats = new Stats();
+  stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+  document.body.appendChild(stats.dom);
 
   // 初始化渲染器
   function initThree() {
@@ -49,18 +55,19 @@
 
   // 初始化照相机
   function initCamera() {
-    camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
+    // camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
+    camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, 10, 1000 );
     camera.position.x = 0;
     camera.position.y = 0;
-    camera.position.z = 100;
-    // camera.up.x = 0;
-    // camera.up.y = 0;
-    // camera.up.z = 1;
-    // camera.lookAt({
-    //   x: 0,
-    //   y: 0,
-    //   z: 0
-    // });
+    camera.position.z = 600;
+    camera.up.x = 0;
+    camera.up.y = 1;
+    camera.up.z = 0;
+    camera.lookAt({
+      x: 0,
+      y: 0,
+      z: 0
+    });
   }
 
   // 初始化场景
@@ -77,36 +84,28 @@
 
   // 初始化几何形
   function initObject() {
-    var geometry = new THREE.Geometry();
-    var material = new THREE.LineBasicMaterial({
-      vertexColors: true
+    var geometry = new THREE.CylinderGeometry(70, 100, 200);
+    var material = new THREE.MeshLambertMaterial({
+      color: 0xFFFFFF
     });
-    var color1 = new THREE.Color(0x444444),
-      color2 = new THREE.Color(0xFF0000),
-      color3 = new THREE.Color(0x00FF00);
-
-    // 线的材质可以由2点的颜色决定
-    var p1 = new THREE.Vector3(-60, 30, 0);
-    var p2 = new THREE.Vector3(60, 30, 0);
-    var p3 = new THREE.Vector3(0, -30, 0);
-     
-    geometry.vertices = [p1, p2, p3, p1];
-    geometry.colors = [color1, color2, color3, color1];
-
-    var line = new THREE.Line(geometry, material, THREE.LineStrip);
-    scene.add(line);
+    var mesh = new THREE.Mesh(geometry, material);
+    mesh.position = new THREE.Vector3(0, 0, 0);
+    scene.add(mesh);
   }
 
-  function initAxis(){
+  // 坐标系
+  function initAxis() {
     var axisHelper = new THREE.AxisHelper(30);
     scene.add(axisHelper);
   }
 
-
   // 渲染
   function render() {
+    stats.begin();
     renderer.clear();
     renderer.render(scene, camera);
+    stats.end();
+
     // requestAnimationFrame(render)
   }
 
@@ -115,7 +114,8 @@
     initCamera();
     initScene();
     initLight();
-    initObject();initAxis()
+    initObject();
+    initAxis()
     render();
   }
 </script>
