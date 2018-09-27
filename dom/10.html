@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>webgl</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+    }
+
+    #canvas-frame {
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      background-color: #EEEEEE;
+    }
+  </style>
+</head>
+
+<body onload="threeStart()">
+  <div id="canvas-frame"></div>
+</body>
+<script src="./stats.js"></script>
+<script src="./three.js"></script>
+<script src="./PLYLoader.js"></script>
+<script>
+  var canvas = document.getElementById("canvas-frame"),
+    width = canvas.clientWidth,
+    height = canvas.clientHeight;
+  var renderer, camera, controls, scene, light, texture, mesh;
+
+  // 监测性能
+  var stats = new Stats();
+  stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+  document.body.appendChild(stats.dom);
+
+  // 初始化渲染器
+  function initThree() {
+    renderer = new THREE.WebGLRenderer({
+      antialias: false
+    });
+    renderer.setSize(width, height);
+    renderer.setClearColor(0x000000, 1);
+    canvas.appendChild(renderer.domElement);
+  }
+
+  // 初始化场景
+  function initScene() {
+    scene = new THREE.Scene();
+  }
+
+  // 初始化照相机
+  function initCamera() {
+    camera = new THREE.PerspectiveCamera(65, width / height, 0.01, 1e10);
+    camera.position.z = 0.2;
+    scene.add(camera);
+  }
+
+  // 初始化灯光
+  function initLight() {
+    light = new THREE.DirectionalLight(0xffffff);
+    light.position.set(200, 200, 1000).normalize();
+    camera.add(light);
+    camera.add(light.target)
+  }
+
+  // 初始化几何形
+  function initObject() {
+    var material = new THREE.MeshLambertMaterial({
+      color: 0xffffff,
+      side: THREE.DoubleSide
+    });
+
+    // var material = new THREE.MeshBasicMaterial({
+    //   color: 0xffffff,
+    //   side: THREE.DoubleSide
+    // });
+
+    var loader = new THREE.PLYLoader();
+
+    loader.load("./bunny.ply", function (geometry) {
+
+      geometry.computeVertexNormals();
+
+      mesh = new THREE.Mesh(geometry, material);
+      mesh.position.setY(-0.11);
+      scene.add(mesh);
+    })
+  }
+
+  // 坐标系
+  function initAxis() {
+    var axisHelper = new THREE.AxisHelper(0.2);
+    scene.add(axisHelper);
+  }
+
+  // 渲染
+  function render() {
+    stats.begin();
+    renderer.clear();
+    if (mesh) {
+      mesh.rotateY(0.01);
+    }
+    renderer.render(scene, camera);
+    stats.end();
+    requestAnimationFrame(render)
+  }
+
+  function threeStart() {
+    initThree();
+    initScene();
+    initCamera();
+    initLight();
+    initObject();
+    render();
+    // initAxis()
+  }
+</script>
+
+</html>

@@ -37,7 +37,7 @@
   var canvas = document.getElementById("canvas-frame"),
     width = canvas.clientWidth,
     height = canvas.clientHeight;
-  var renderer, camera, scene, light, cube;
+  var renderer, camera, scene, light, texture;
 
   var stats = new Stats();
   stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -87,8 +87,11 @@
     var geometry = new THREE.PlaneGeometry(500, 300, 1, 1);
 
     var loader = new THREE.TextureLoader();
-    loader.load("./001.jpg", function (texture) {
-      console.log(texture)
+    loader.load("./001.jpg", function (text) {
+      // console.log(texture)
+      texture = text;
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.x = texture.repeat.y = 1;
       var material = new THREE.MeshBasicMaterial({
         map: texture
       });
@@ -115,8 +118,11 @@
     renderer.clear();
     renderer.render(scene, camera);
     stats.end();
-
-    // requestAnimationFrame(render)
+    if(texture){
+      texture.offset.x -= -0.001;
+      texture.offset.y -= -0.001;
+    }
+    requestAnimationFrame(render)
   }
 
   function threeStart() {
