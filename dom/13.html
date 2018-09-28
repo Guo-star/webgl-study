@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>webgl</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #canvas-frame {
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      background-color: #EEEEEE;
+    }
+  </style>
+</head>
+
+<body onload="threeStart()">
+  <div id="canvas-frame"></div>
+</body>
+<script src="./stats.js"></script>
+<script src="./three.js"></script>
+<script src="./OBJLoader.js"></script>
+<script>
+  var canvas = document.getElementById("canvas-frame"),
+    width = canvas.clientWidth,
+    height = canvas.clientHeight;
+  var renderer, camera, scene, texture, mesh;
+
+  var stats = new Stats();
+  stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+  document.body.appendChild(stats.dom);
+
+
+  // 初始化照相机
+  function initCamera() {
+    camera = new THREE.PerspectiveCamera(27, width / height, 1, 2000);
+    // camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, 10, 1000 );
+    camera.position.x = 0;
+    camera.position.y = 0;
+    camera.position.z = 100;
+  }
+
+  // 初始化场景
+  function initScene() {
+    scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x050505, 2000, 3500)
+  }
+
+  // 初始化灯光
+  function initLight() {
+    scene.add(new THREE.AmbientLight(0x101030));
+
+    var directionalLight = new THREE.DirectionalLight(0xffeedd);
+    directionalLight.position.set(0, 0, 1);
+    scene.add(directionalLight);
+  }
+
+  // 初始化几何形
+  function initObject() {
+
+  }
+
+  // 初始化渲染器
+  function initThree() {
+    renderer = new THREE.WebGLRenderer({
+      antialias: false
+    });
+
+    renderer.setClearColor(scene.fog.color)
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(width, height);
+
+    renderer.gammaInput = true;
+    renderer.gammaOutput = true;
+    canvas.appendChild(renderer.domElement);
+
+    window.addEventListener("resize", function () {
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height)
+    }, false)
+  }
+
+  // 坐标系
+  function initAxis() {
+    var axisHelper = new THREE.AxisHelper(60);
+    scene.add(axisHelper);
+  }
+
+  // 渲染
+  function render() {
+    stats.begin();
+    renderer.clear();
+    // mesh.rotateX(0.01);
+    // mesh.rotateY(0.001);
+    // mesh.rotateZ(2);
+    renderer.render(scene, camera);
+    stats.end();
+    // requestAnimationFrame(render)
+  }
+
+  function threeStart() {
+    initCamera();
+    initScene();
+    initLight();
+    initObject();
+    initThree();
+    // initAxis()
+    render();
+  }
+</script>
+
+</html>
