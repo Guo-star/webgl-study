@@ -106,7 +106,6 @@
   }
   //设置模型旋转速度，可以根据自己的需要调整
   function rotateScene(deltaX, deltaY) {
-    //设置旋转方向和移动方向相反，所以加了个负号
     var degX = deltaX / 279;
     var degY = deltaY / 279;
     //deg 设置模型旋转的弧度
@@ -145,7 +144,7 @@
 
   // 初始化几何形
   function initObject() {
-    var triangles = 1600000;
+    var triangles = 1000000;
     var calNum = triangles * 3 * 3; // 开辟空间
 
     var geometry = new THREE.BufferGeometry();
@@ -276,7 +275,7 @@
     stats.begin();
     renderer.clear();
     // mesh.rotateX(0.01);
-    mesh.rotateY(0.01);
+    // mesh.rotateY(0.01);
     // mesh.rotateZ(2);
     renderer.render(scene, camera);
     stats.end();

@@ -48,11 +48,11 @@
 
   // 初始化照相机
   function initCamera() {
-    camera = new THREE.PerspectiveCamera(27, width / height, 1, 2000);
+    camera = new THREE.PerspectiveCamera(45, width / height, 1, 2000);
     // camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, 10, 1000 );
     camera.position.x = 0;
     camera.position.y = 0;
-    camera.position.z = 100;
+    camera.position.z = 300;
   }
 
   // 初始化场景
@@ -70,9 +70,32 @@
     scene.add(directionalLight);
   }
 
+
   // 初始化几何形
   function initObject() {
+    var manager = new THREE.LoadingManager();
+    var texture = new THREE.Texture();
 
+    var loader = new THREE.ImageLoader(manager);
+    loader.load("./skin/UV_Grid_Sm.jpg", function (image) {
+      texture.image = image;
+      texture.needsUpdate = true;
+    })
+
+    var Objloader = new THREE.OBJLoader(manager);
+    Objloader.load("./model/male02.obj", function (object) {
+      mesh = object;
+      console.log(object)
+      object.traverse(function (child) {
+        if (child instanceof THREE.Mesh) {
+          if (child.name == "mesh1.002_mesh1-geometry_male-02-1noCullingID_male-02-1noCulling.JP") {
+            child.material.map = texture;
+          }
+        }
+      })
+      object.position.y = -80;
+      scene.add(object);
+    })
   }
 
   // 初始化渲染器
@@ -89,11 +112,67 @@
     renderer.gammaOutput = true;
     canvas.appendChild(renderer.domElement);
 
+    document.addEventListener("mousedown", onMouseDown, false)
+    document.addEventListener('mouseup', onMouseup, false);
+    document.addEventListener('mousewheel', onMouseWheel, false);
+
     window.addEventListener("resize", function () {
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height)
     }, false)
+  }
+
+  var rotateStart = new THREE.Vector2();
+  var mouseDown;
+
+  function onMouseDown(event) {
+    event.preventDefault();
+    mouseDown = true;
+    mouseX = event.clientX; //出发事件时的鼠标指针的水平坐标
+    mouseY = event.clientY; //出发事件时的鼠标指针的水平坐标
+
+    rotateStart.set(event.clientX, event.clientY);
+    document.addEventListener('mousemove', onMouseMove2, false);
+  }
+
+  function onMouseup(event) {
+    mouseDown = false;
+    document.removeEventListener("mousemove", onMouseMove2);
+  }
+
+  function onMouseWheel(event) {
+    var positionX = 0;
+
+    if (event.wheelDelta) {
+      var blow = camera.position.z + (-event.wheelDelta) * 0.3;
+      if (blow >= 5 && blow <= 3500) {
+        camera.position.z = blow;
+        render();
+      }
+    }
+  }
+
+  function onMouseMove2(event) {
+    if (!mouseDown) {
+      return;
+    }
+    var deltaX = event.clientX - mouseX;
+    var deltaY = event.clientY - mouseY;
+    mouseX = event.clientX;
+    mouseY = event.clientY;
+    rotateScene(deltaX, deltaY);
+  }
+
+  //设置模型旋转速度，可以根据自己的需要调整
+  function rotateScene(deltaX, deltaY) {
+    //设置旋转方向和移动方向相反，所以加了个负号
+    var degX = deltaX / 279;
+    var degY = deltaY / 279;
+    //deg 设置模型旋转的弧度
+    mesh.rotation.y += degX;
+    mesh.rotation.x += degY;
+    render();
   }
 
   // 坐标系
