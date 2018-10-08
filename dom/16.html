@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>webgl</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #canvas-frame {
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      background-color: #EEEEEE;
+    }
+  </style>
+</head>
+
+<body onload="threeStart()">
+  <div id="canvas-frame"></div>
+</body>
+<script src="./stats.js"></script>
+<script src="./three.js"></script>
+<script>
+  // 渲染器 性能监视
+  var renderer;
+  var stats;
+  var width, height;
+
+  function initThree() {
+    var content = document.getElementById("canvas-frame");
+    width = content.clientWidth;
+    height = content.clientHeight;
+
+    renderer = new THREE.WebGLRenderer({
+      antialias: false
+    });
+
+    renderer.setSize(width, height);
+    renderer.setClearColor(0xFFFFFF, 1.0);
+
+    content.appendChild(renderer.domElement);
+
+    stats = new Stats();
+    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    content.appendChild(stats.dom);
+  }
+
+  // 相机
+  var camera;
+
+  function initCamera() {
+    camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
+    camera.position.x = 100;
+    camera.position.y = 300;
+    camera.position.z = 600;
+    camera.up.x = 0;
+    camera.up.y = 1;
+    camera.up.z = 0;
+    camera.lookAt(0, 0, 0);
+  }
+
+  // 场景
+  var scene;
+
+  function initScene() {
+    scene = new THREE.Scene();
+  }
+
+  // 灯光
+  var light;
+
+  function initLight() {
+    light = new THREE.AmbientLight(0xFF0000);
+    light.position.set(100, 100, 200);
+    scene.add(light);
+  }
+
+  // 几何形
+  var cube;
+  var mesh;
+  var group
+
+  function initObject() {
+
+    var geometry = new THREE.BoxGeometry(30, 30, 30);
+
+    for (var i = 0; i < geometry.faces.length; i += 2) {
+
+      var hex = Math.random() * 0xffffff;
+      geometry.faces[i].color.setHex(hex);
+      geometry.faces[i + 1].color.setHex(hex);
+
+    }
+
+    var material = new THREE.MeshBasicMaterial({
+      vertexColors: THREE.FaceColors
+    });
+    mesh = new THREE.Mesh(geometry, material);
+    // mesh.position = new THREE.Vector3(0, 0, 0);
+    group = new THREE.Group();
+    group.add(mesh);
+
+    var mesh1 = new THREE.Mesh(geometry, material);
+    group.add(mesh1);
+    mesh1.translateX(-100);
+    mesh1.translateZ(100);
+
+    scene.add(group);
+  }
+
+  // 网格
+  function initGrid() {
+    var helper = new THREE.GridHelper(1000, 50, 0x0000ff, 0x808080);
+    scene.add(helper);
+    // group.add(helper);
+  }
+
+
+  function threeStart() {
+    initThree();
+    initCamera();
+    initScene();
+    initLight();
+    initObject();
+    initGrid();
+    animation();
+  }
+
+  function animation() {
+    stats.begin();
+    // mesh.rotation.y +=0.01;
+    // group.rotateX(0.01);
+    var v1 = new THREE.Vector3(0, 1, 0);
+    group.rotateOnAxis(v1, 0.01)
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(animation);
+    stats.end();
+  }
+</script>
+
+</html>

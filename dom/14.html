@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>球</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #canvas-frame {
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      background-color: #EEEEEE;
+    }
+  </style>
+</head>
+
+<body onload="threeStart()">
+  <div id="canvas-frame"></div>
+</body>
+<script src="./stats.js"></script>
+<script src="./three.js"></script>
+<script src="./SceneUtils.js"></script>
+<script>
+  var canvas = document.getElementById("canvas-frame"),
+    width = canvas.clientWidth,
+    height = canvas.clientHeight;
+  var renderer, camera, scene, texture, mesh;
+
+  var mouseX = 0,
+    mouseY = 0;
+
+  var stats = new Stats();
+  stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+  document.body.appendChild(stats.dom);
+
+
+  // 初始化照相机
+  function initCamera() {
+    camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
+    camera.setViewOffset(width, height, 0, 0, width, height);
+    // camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, 10, 1000 );
+    // camera.position.x = 1800;
+    // camera.position.y = 180;
+    camera.position.z = 1800;
+  }
+
+  // 初始化场景
+  function initScene() {
+    scene = new THREE.Scene();
+    // scene.fog = new THREE.Fog(0x050505, 2000, 3500)
+  }
+
+  // 初始化灯光
+  function initLight() {
+    // scene.add(new THREE.AmbientLight(0x101030));
+
+    var directionalLight = new THREE.DirectionalLight(0xffffff);
+    directionalLight.position.set(0, 0, 1).normalize();
+    scene.add(directionalLight);
+  }
+
+
+  // 初始化几何形
+  function initObject() {
+    var Ccanvas = document.createElement("canvas");
+    Ccanvas.width = width;
+    Ccanvas.height = height;
+
+    var context = Ccanvas.getContext('2d');
+    var gradient = context.createRadialGradient(Ccanvas.width / 2, Ccanvas.height / 2, 0, Ccanvas.width / 2, Ccanvas.height /
+      2, Ccanvas.width / 2);
+    gradient.addColorStop(0.1, 'rgba(210,210,210,1)');
+    gradient.addColorStop(1, 'rgba(255,255,255,1)');
+
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, Ccanvas, Ccanvas.height);
+
+    var shadowTexture = new THREE.Texture(Ccanvas);
+    shadowTexture.needsUpdate = true;
+
+    var shadowMaterial = new THREE.MeshBasicMaterial({
+      map: shadowTexture
+    });
+    var shadowGeo = new THREE.PlaneGeometry(300, 300, 1, 1);
+
+    mesh = new THREE.Mesh(shadowGeo, shadowMaterial);
+    mesh.position.y = -250;
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+
+    mesh = new THREE.Mesh(shadowGeo, shadowMaterial);
+    mesh.position.x = -400;
+    mesh.position.y = -250;
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+
+    mesh = new THREE.Mesh(shadowGeo, shadowMaterial);
+    mesh.position.x = 400;
+    mesh.position.y = -250;
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+
+    var faceIndices = ['a', 'b', 'c', 'd'];
+    var color, f1, f2, f3, p, n, vertexIndex,
+
+      radius = 200,
+
+      geometry1 = new THREE.IcosahedronGeometry(radius, 1),
+      geometry2 = new THREE.IcosahedronGeometry(radius, 1),
+      geometry3 = new THREE.IcosahedronGeometry(radius, 1);
+
+    for (var i = 0; i < geometry1.faces.length; i++) {
+      f1 = geometry1.faces[i];
+      f2 = geometry2.faces[i];
+      f3 = geometry3.faces[i];
+
+      n = (f1 instanceof THREE.Face3) ? 3 : 4;
+
+
+      for (var j = 0; j < n; j++) {
+
+        vertexIndex = f1[faceIndices[j]];
+
+        p = geometry1.vertices[vertexIndex];
+
+        color = new THREE.Color(0xffffff);
+        color.setHSL((p.y / radius + 1) / 2, 1.0, 1.0);
+
+        f1.vertexColors[j] = color;
+
+        color = new THREE.Color(0xffffff);
+        color.setHSL(0.0, (p.y / radius + 1) / 2, 1.0);
+
+        f2.vertexColors[j] = color;
+
+        color = new THREE.Color(0xffffff);
+        color.setHSL(0.125 * vertexIndex / geometry1.vertices.length, 1.0, 1.0);
+
+        f3.vertexColors[j] = color;
+
+      }
+    }
+
+
+    var materials = [
+
+      new THREE.MeshLambertMaterial({
+        color: 0xffffff,
+        shading: THREE.FlatShading,
+        vertexColors: THREE.VertexColors
+      }),
+      new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        shading: THREE.FlatShading,
+        wireframe: true,
+        transparent: true
+      })
+
+    ];
+
+    group1 = THREE.SceneUtils.createMultiMaterialObject(geometry1, materials);
+    group1.position.x = -400;
+    group1.rotation.x = -1.87;
+    scene.add(group1);
+
+    group2 = THREE.SceneUtils.createMultiMaterialObject(geometry2, materials);
+    group2.position.x = 400;
+    group2.rotation.x = 0;
+    scene.add(group2);
+
+    group3 = THREE.SceneUtils.createMultiMaterialObject(geometry3, materials);
+    group3.position.x = 0;
+    group3.rotation.x = 0;
+    scene.add(group3);
+  }
+
+  // 初始化渲染器
+  function initThree() {
+    renderer = new THREE.WebGLRenderer({
+      antialias: true
+    });
+
+    // renderer.setClearColor(scene.fog.color)
+    // renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(width, height);
+
+    // renderer.gammaInput = true;
+    // renderer.gammaOutput = true;
+    canvas.appendChild(renderer.domElement);
+
+    document.addEventListener("mousedown", onMouseDown, false)
+    document.addEventListener('mouseup', onMouseup, false);
+    document.addEventListener('mousewheel', onMouseWheel, false);
+
+    window.addEventListener("resize", function () {
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height)
+    }, false)
+  }
+
+  var rotateStart = new THREE.Vector2();
+  var mouseDown;
+
+  function onMouseDown(event) {
+    event.preventDefault();
+    mouseDown = true;
+    mouseX = event.clientX; //出发事件时的鼠标指针的水平坐标
+    mouseY = event.clientY; //出发事件时的鼠标指针的水平坐标
+
+    rotateStart.set(event.clientX, event.clientY);
+    document.addEventListener('mousemove', onMouseMove2, false);
+  }
+
+  function onMouseup(event) {
+    mouseDown = false;
+    document.removeEventListener("mousemove", onMouseMove2);
+  }
+
+  function onMouseWheel(event) {
+    var positionX = 0;
+
+    if (event.wheelDelta) {
+      var blow = camera.position.z + (-event.wheelDelta) * 0.3;
+      if (blow >= 5 && blow <= 3500) {
+        camera.position.z = blow;
+        render();
+      }
+    }
+  }
+
+  function onMouseMove2(event) {
+    if (!mouseDown) {
+      return;
+    }
+    var deltaX = event.clientX - mouseX;
+    var deltaY = event.clientY - mouseY;
+    mouseX = event.clientX;
+    mouseY = event.clientY;
+    rotateScene(deltaX, deltaY);
+  }
+
+  //设置模型旋转速度，可以根据自己的需要调整
+  function rotateScene(deltaX, deltaY) {
+    //设置旋转方向和移动方向相反，所以加了个负号
+    var degX = deltaX / 279;
+    var degY = deltaY / 279;
+    //deg 设置模型旋转的弧度
+    
+    camera.position.y = 100 * Math.sin(THREE.Math.degToRad(deltaX));
+    // camera.rotation.y += degX;
+    // camera.rotation.x += degY;
+    render();
+  }
+
+  // 坐标系
+  function initAxis() {
+    var axisHelper = new THREE.AxisHelper(60);
+    scene.add(axisHelper);
+  }
+
+  // 渲染
+  function render() {
+    stats.begin();
+    renderer.clear();
+    // mesh.rotateX(0.01);
+    // mesh.rotateY(0.001);
+    // mesh.rotateZ(2);
+    // camera.lookAt(scene.position);
+    renderer.render(scene, camera);
+    stats.end();
+    // requestAnimationFrame(render)
+  }
+
+  function threeStart() {
+    initCamera();
+    initScene();
+    initLight();
+    initObject();
+    initThree();
+    // initAxis()
+    render();
+  }
+</script>
+
+</html>
