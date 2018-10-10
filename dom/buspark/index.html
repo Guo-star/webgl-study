@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>停车场</title>
+  <style>
+    * {
+      padding: 0;
+      margin: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #myCanvas {
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      background-color: #EEEEEE;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="myCanvas"></div>
+</body>
+<script src="./stats.js"></script>
+<script src="./three.js"></script>
+<script src="./data.js"></script>
+<script src="./index.js"></script>
+<script>
+  var Three = new Three("myCanvas");
+
+  // function render() {
+  //   Three.animation();
+  //   requestAnimationFrame(render)
+  // }
+  // render()
+</script>
+
+</html>

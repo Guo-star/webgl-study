@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>webgl</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #canvas-frame {
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      background-color: #EEEEEE;
+    }
+  </style>
+</head>
+
+<body onload="threeStart()">
+  <div id="canvas-frame"></div>
+</body>
+<script src="./stats.js"></script>
+<script src="./three.js"></script>
+<script src="./JSONLoader.js"></script>
+<script src="./BinaryLoader.js"></script>
+<script>
+  // 渲染器 性能监视
+  var renderer;
+  var stats;
+  var width, height;
+
+  function initThree() {
+    var content = document.getElementById("canvas-frame");
+    width = content.clientWidth;
+    height = content.clientHeight;
+
+    renderer = new THREE.WebGLRenderer({
+      antialias: false
+    });
+
+    renderer.setSize(width, height);
+    renderer.setClearColor(scene.fog.color);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.autoClear = false;
+    renderer.sortObjects = false;
+
+    content.appendChild(renderer.domElement);
+
+    stats = new Stats();
+    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    content.appendChild(stats.dom);
+  }
+
+  // 相机
+  var camera;
+
+  function initCamera() {
+    camera = new THREE.PerspectiveCamera(20, width / height, 1, 50000);
+    camera.position.set(0, 700, 7000);
+    camera.lookAt(scene.position);
+  }
+
+  // 场景
+  var scene;
+
+  function initScene() {
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000104, 0.0000675);
+  }
+
+  // 灯光
+  var light;
+
+  function initLight() {
+    // light = new THREE.AmbientLight(0xFF0000);
+    // light.position.set(100, 100, 200);
+    // scene.add(light);
+  }
+
+  // 几何形
+  var cube;
+  var mesh;
+  var parent = new THREE.Object3D();
+
+  function initObject() {
+    var aloader = new THREE.JSONLoader();
+    var bloader = new THREE.BinaryLoader();
+    // 加载地形
+    aloader.load("./terrain.js", function (geometry) {
+      createMesh(geometry, scene, 16.8, -11000, -200, -5000, 0x00ff44, false);
+      createMesh(geometry, scene, 16.8, 11000, -200, -15000, 0x00ff33, false);
+      createMesh(geometry, scene, 16.8, 0, -200, -15000, 0x00ff33, false);
+      createMesh(geometry, scene, 16.8, 0, -200, 15000, 0x00ff33, false);
+      createMesh(geometry, scene, 16.8, 11000, -200, 15000, 0x00ff22, false);
+      createMesh(geometry, scene, 16.8, -11000, -200, 5000, 0x00ff11, false);
+      createMesh(geometry, scene, 16.8, 13000, -200, 5000, 0x00ff55, false);
+      createMesh(geometry, scene, 16.8, 13000, -200, -5000, 0x00ff66, false);
+    })
+    // 加载车子
+    bloader.load("./model/VeyronNoUv_bin.js", function (geometry) {
+      // var material = new THREE.MeshBasicMaterial({
+      //   color: 0xFF0000,
+      //   wireframe: true
+      // });
+      // var mesh = new THREE.Mesh(geometry, material);
+      // scene.add(mesh);
+
+      createMesh(geometry, scene, 6.8, 2200, -200, -100, 0x0055ff, false)
+    })
+    // 女人
+    bloader.load("./model/Female02_bin.js", function (geometry) {
+      createMesh(geometry, scene, 4.05, -1000, -350, 0, 0xffdd44, true);
+      createMesh(geometry, scene, 4.05, 0, -350, 0, 0xffffff, true);
+      createMesh(geometry, scene, 4.05, 1000, -350, 400, 0xff4422, true);
+      createMesh(geometry, scene, 4.05, 250, -350, 1500, 0xff9955, true);
+      createMesh(geometry, scene, 4.05, 250, -350, 2500, 0xff77dd, true);
+    })
+    // 男人
+    bloader.load("./model/Male02_bin.js", function (geometry) {
+      createMesh(geometry, scene, 4.05, -500, -350, 600, 0xff7744, true);
+      createMesh(geometry, scene, 4.05, 500, -350, 0, 0xff5522, true);
+      createMesh(geometry, scene, 4.05, -250, -350, 1500, 0xff9922, true);
+      createMesh(geometry, scene, 4.05, -250, -350, -1500, 0xff99ff, true);
+    })
+
+    // 粒子系统
+    scene.add(parent);
+    var grid = new THREE.Points(new THREE.PlaneBufferGeometry(15000, 15000, 64, 64), new THREE.PointsMaterial({
+      color: 0xFF0000,
+      size: 10
+    }));
+
+    grid.position.y = -400;
+    grid.rotation.x = -Math.PI / 2;
+    parent.add(grid);
+  }
+
+  var clonemeshes = [],
+    meshes = [];
+
+  // 粒子系统
+  function createMesh(orginalGeometry, scene, scale, x, y, z, color, dynamic) {
+    // 获取顶点的位置
+    var vertices = orginalGeometry.vertices;
+    var vl = vertices.length;
+
+    // 几何体对象 和相关属性
+    var geometry = new THREE.Geometry();
+    var vertices_tmp = []; // x y z down up
+
+    var p;
+    for (var i = 0; i < vl; i++) {
+      p = vertices[i];
+      geometry.vertices[i] = p.clone();
+
+      vertices_tmp[i] = [p.x, p.y, p.z, 0, 0];
+    }
+
+    // 人的位置
+    var clones = [
+      [6000, 0, -4000],
+      [5000, 0, 0],
+      [1000, 0, 5000],
+      [1000, 0, -5000],
+      [4000, 0, 2000],
+      [-4000, 0, 1000],
+      [-5000, 0, -5000],
+
+      [0, 0, 0]
+    ];
+
+    // 模型上-下 下-上 静态 动态 生产点
+    var c, material;
+    if (dynamic) {
+      for (var i = 0; i < clones.length; i++) {
+        c = (i < clones.length - 1) ? 0x252525 : color;
+
+        material = new THREE.PointsMaterial({
+          color: c,
+          size: 3
+        })
+        mesh = new THREE.Points(geometry, material);
+        mesh.scale.x = mesh.scale.y = mesh.scale.z = scale;
+        mesh.position.set(x + clones[i][0], y + clones[i][1], z + clones[i][2]);
+        parent.add(mesh)
+
+        clonemeshes.push({
+          mesh: mesh,
+          speed: 0.5 + Math.random()
+        })
+      }
+
+    } else {
+      material = new THREE.PointsMaterial({
+        color: color,
+        size: 3
+      })
+      mesh = new THREE.Points(geometry, material);
+      mesh.scale.x = mesh.scale.y = mesh.scale.z = scale;
+      mesh.position.set(x, y, z);
+      parent.add(mesh)
+    }
+
+    // 设置初始值
+    meshes.push({
+      mesh: mesh,
+      vertices: geometry.vertices,
+      vertices_tmp: vertices_tmp,
+      vl: vl,
+      down: 0,
+      up: 0,
+      direction: 0,
+      speed: 59,
+      delay: Math.floor(200 + 200 * Math.random()),
+      started: false,
+      start: Math.floor(100 + 200 * Math.random()),
+      dynamic: dynamic
+    })
+  }
+
+  // 网格
+  function initGrid() {
+    var helper = new THREE.GridHelper(1000, 50, 0x0000ff, 0x808080);
+    scene.add(helper);
+    // group.add(helper);
+  }
+
+
+  function threeStart() {
+    initScene();
+    initThree();
+    initCamera();
+    initLight();
+    initObject();
+    // initGrid();
+    animation();
+  }
+
+  function animation() {
+    stats.begin();
+    requestAnimationFrame(animation);
+    render();
+    stats.end();
+  }
+
+  var delta;
+  var clock = new THREE.Clock();
+
+  function render() {
+    // 计算每一帧的时间
+    delta = clock.getDelta();
+    delta = delta < 2 ? delta : 2;
+
+    parent.rotation.y += -0.02 * delta;
+
+    var data, mesh, vertices, vertices_tmp, vl;
+    var p, vt, d;
+    // 根据动态或者静态模型调整 每个模型的顶顶位置
+    for (var i = 0; i < meshes.length; i++) {
+      data = meshes[i];
+      mesh = data.mesh;
+      vertices = data.vertices;
+      vertices_tmp = data.vertices_tmp;
+      vl = data.vl;
+      if (!data.dynamic) continue;
+
+      if (data.start > 0) {
+        data.start -= 1;
+      } else {
+        if (!data.started) {
+          data.direction = -1;
+          data.started = true;
+        }
+      }
+
+      for (var j = 0; j < vl; j++) {
+        p = vertices[j];
+        vt = vertices_tmp[j];
+        if (data.direction < 0) {
+          if (p.y > 0) {
+            p.x += 1.5 * (0.5 - Math.random()) * data.speed * delta;
+            // 向下的概率大于向上的概率 所以整个人物总有一个时刻向下
+            p.y += 3.5 * (0.15 - Math.random()) * data.speed * delta;
+            p.z += 1.5 * (0.5 - Math.random()) * data.speed * delta;
+          } else {
+            if (!vt[3]) {
+              vt[3] = 1;
+              data.down += 1;
+            }
+          }
+        };
+        if (data.direction > 0) {
+          d = Math.abs(p.x - vt[0]) + Math.abs(p.y - vt[1]) + Math.abs(p.z - vt[2]);
+
+          if (d > 1) {
+            p.x += -(p.x - vt[0]) / d * data.speed * delta * (0.85 - Math.random());
+            p.y += -(p.y - vt[1]) / d * data.speed * delta * (1 - Math.random());
+            p.z += -(p.z - vt[2]) / d * data.speed * delta * (0.85 - Math.random());
+
+          } else {
+            if (!vt[4]) {
+              vt[4] = 1;
+              data.up += 1;
+            }
+          }
+        };
+      }
+
+      if (data.down === vl) {
+        if (data.delay === 0) {
+          data.direction = 1;
+          data.speed = 10;
+          data.down = 0;
+          data.delay = 300;
+          for (var j = 0; j < vl; j++) {
+            vertices_tmp[i][3] = 0;
+          }
+        } else {
+          data.delay -= 1;
+        }
+      }
+
+      if (data.up === vl) {
+        if (data.delay === 0) {
+          data.direction = -1;
+          data.speed = 10;
+          data.up = 0;
+          data.delay = 300;
+          for (var j = 0; j < vl; j++) {
+            vertices_tmp[i][4] = 0;
+          }
+        } else {
+          data.delay -= 1;
+        }
+      }
+
+      mesh.geometry.verticesNeedUpdate = true;
+    }
+
+    renderer.clear();
+    renderer.render(scene, camera);
+  }
+</script>
+
+</html>
