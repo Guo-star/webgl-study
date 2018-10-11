@@ -1,6 +1,5 @@
 function Three(el) {
   this.el = el;
-
   this.threeStart();
 }
 
@@ -16,13 +15,12 @@ Object.assign(Three.prototype, {
     });
 
     renderer.setSize(this.width, this.height);
-    renderer.setClearColor(0xffffff, 1); //this.scene.fog.color
+    renderer.setClearColor(0x000000, 1); //this.scene.fog.color
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.autoClear = false;
+    renderer.autoClear = true;
     renderer.sortObjects = false;
 
     content.appendChild(renderer.domElement);
-
 
     var stats = this.stats = new Stats();
     stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -31,9 +29,17 @@ Object.assign(Three.prototype, {
 
   // 相机
   initCamera: function () {
-    var camera = this.camera = new THREE.PerspectiveCamera(40, this.width / this.height, 1, 10000);
+    var camera = this.camera = new THREE.PerspectiveCamera(45, this.width / this.height, 1, 10000);
     camera.position.set(0, 900, 1000);
     camera.lookAt(this.scene.position);
+  },
+
+  // 交互
+  initControls: function () {
+    var controls = this.controls = new THREE.OrbitControls(this.camera);
+    console.log(controls)
+    controls.enableZoom = true;
+    controls.autoRotate = true;
   },
 
   // 场景
@@ -51,45 +57,105 @@ Object.assign(Three.prototype, {
 
   // 几何形
   initObject: function () {
-    var rectShape, rectGeom, mesh;
-    var material = new THREE.MeshBasicMaterial({
-      color: 0xb9dea0,
+    var mesh, boxHelper;
+
+    // 泊位材质
+    var LineMaterial = new THREE.LineBasicMaterial({
+      linewidth: 2,
+      color: 0xe2e3de
+    })
+    // 地板材质
+    var ShapeMaterial = new THREE.MeshBasicMaterial({
+      color: 0xabb7b7,
       side: THREE.DoubleSide
-      // wireframe:true
     });
-    var group = new THREE.Group();
+
+    // 墙壁材质
+    var wallMaterial = new THREE.MeshBasicMaterial({
+      color: 0xe2e3de,
+      side: THREE.DoubleSide
+    })
+
+    // 全局组
+    var globalGroup = this.globalGroup = new THREE.Group();
+    // 公共组
+    var parkGroup = new THREE.Group();
+
+    // 地板
+    mesh = new THREE.Mesh(this.drawShape(floorData), ShapeMaterial);
+    parkGroup.add(mesh)
+
+    // 泊位
     for (var i = 0; i < busParkData.length; i++) {
-      rectShape = new THREE.Shape();
-      rectShape.moveTo(busParkData[i][0], busParkData[i][1]);
-      rectShape.lineTo(busParkData[i][2], busParkData[i][3]);
-      rectShape.lineTo(busParkData[i][4], busParkData[i][5]);
-      rectShape.lineTo(busParkData[i][6], busParkData[i][7]);
-      // rectShape.lineTo(busParkData[i][0], busParkData[i][1]);
-
-      rectGeom = new THREE.ShapeGeometry(rectShape);
-      mesh = new THREE.Mesh(rectGeom, material);
-      group.add(mesh)
+      mesh = new THREE.Line(this.drawLine(busParkData[i]), LineMaterial);
+      parkGroup.add(mesh)
     }
-    // 包围和
-    var boxHelper = new THREE.BoxHelper(group,0xff0000);
 
+    // 墙壁 中
+    var geometry = new THREE.BoxGeometry(1134, 10, 100);
+    mesh = new THREE.Mesh(geometry, wallMaterial);
+    var box = new THREE.Box3().setFromObject(mesh);
+    mesh.position.set(720, 414.4, -box.max.z);
+    parkGroup.add(mesh)
+
+    // 墙壁 上
+    geometry = new THREE.BoxGeometry(1627.51, 10, 100);
+    mesh = new THREE.Mesh(geometry, wallMaterial);
+    box = new THREE.Box3().setFromObject(mesh);
+    mesh.position.set(box.max.x, box.max.y, -box.max.z);
+    parkGroup.add(mesh)
+    
+    // 墙壁 下
+    mesh = new THREE.Mesh(geometry, wallMaterial);
+    mesh.position.set(box.max.x, 954, -box.max.z);
+    parkGroup.add(mesh)
+
+
+
+    // 包围和
+    var boxHelper = new THREE.BoxHelper(parkGroup, 0xe2e3de);
     // 反转90度
-    group.rotateX(Math.PI / 2);
+    parkGroup.rotateX(Math.PI / 2);
     // 计算中心点
-    var box = new THREE.Box3().setFromObject(group);
+    var box = new THREE.Box3().setFromObject(parkGroup);
     var center = box.getCenter(new THREE.Vector3(0, 0, 0));
     // 移动到中心点
     center.multiplyScalar(-1);
-    group.position.set(center.x, center.y, center.z);
+    parkGroup.position.set(center.x, center.y, center.z);
 
-    group.add(boxHelper)
-    this.scene.add(group);
+    // parkGroup.add(boxHelper)
+    globalGroup.add(parkGroup);
+    this.scene.add(globalGroup);
   },
 
+  // 画四边形
+  drawShape: function (position) {
+    var rectShape = new THREE.Shape();
+    rectShape.moveTo(position[0], position[1]);
+    rectShape.lineTo(position[2], position[3]);
+    rectShape.lineTo(position[4], position[5]);
+    rectShape.lineTo(position[6], position[7]);
+
+    return new THREE.ShapeGeometry(rectShape);
+  },
+
+  // 画四边形 边线
+  drawLine: function (position) {
+    var rectShape = new THREE.Shape();
+    rectShape.moveTo(position[0], position[1]);
+    rectShape.lineTo(position[2], position[3]);
+    rectShape.lineTo(position[4], position[5]);
+    rectShape.lineTo(position[6], position[7]);
+    rectShape.lineTo(position[0], position[1]);
+    var points = rectShape.getPoints();
+    return new THREE.BufferGeometry().setFromPoints(points);
+  },
 
   // 事件
   initEvent: function () {
     var _this = this;
+    var rotateStart = new THREE.Vector2();
+    var mouseDown, mouseX, mouseY;
     window.addEventListener('resize', function () {
       _this.width = _this.content.clientWidth;
       _this.height = _this.content.clientHeight;
@@ -99,7 +165,69 @@ Object.assign(Three.prototype, {
       _this.renderer.setSize(_this.width, _this.height);
     }, false);
 
-    
+    // 鼠标滚轮
+    document.addEventListener('mousewheel', function (event) {
+      if (event.wheelDelta) {
+        var factor = 10;
+        //将鼠标的屏幕坐标转换为NDC坐标
+        var mX = (event.clientX / _this.width) * 2 - 1;
+        var mY = -(event.clientY / _this.height) * 2 + 1;
+        //深度值为0.5，深度值越大，精度越高
+        var vector = new THREE.Vector3(mX, mY, 0.5);
+        //将鼠标坐标转换为3D空间坐标
+        vector.unproject(_this.camera);
+        //获得从相机指向鼠标所对应的3D空间点的射线（归一化）
+        vector.sub(_this.camera.position).normalize();
+
+        if (event.deltaY < 0) {
+          _this.camera.position.x += vector.x * factor;
+          _this.camera.position.y += vector.y * factor;
+          _this.camera.position.z += vector.z * factor;
+        } else {
+          _this.camera.position.x -= vector.x * factor;
+          _this.camera.position.y -= vector.y * factor;
+          _this.camera.position.z -= vector.z * factor;
+        }
+        _this.animation();
+
+      }
+    }, false);
+
+    document.addEventListener("mousedown", function (event) {
+      event.preventDefault();
+      mouseDown = true;
+      mouseX = event.clientX; //出发事件时的鼠标指针的水平坐标
+      mouseY = event.clientY; //出发事件时的鼠标指针的水平坐标
+      rotateStart.set(mouseX, mouseY);
+      document.addEventListener('mousemove', onMouseMove, false);
+    }, false)
+
+    document.addEventListener('mouseup', function () {
+      mouseDown = false;
+      document.removeEventListener("mousemove", onMouseMove);
+    }, false);
+
+    function onMouseMove(event) {
+      if (!mouseDown) {
+        return;
+      }
+      var x = _this.camera.position.x;
+      var y = _this.camera.position.y;
+      var z = _this.camera.position.z;
+
+      // 相机向量
+      var v1 = new THREE.Vector3(x, y, z);
+
+      var cameraRound = 10;
+      var deltaX = (event.clientX - mouseX) / 279;
+      var deltaY = (event.clientY - mouseY) / 270;
+      mouseX = event.clientX;
+      mouseY = event.clientY;
+
+      _this.globalGroup.rotateX(deltaY)
+      _this.globalGroup.rotateY(deltaX)
+      _this.animation();
+    }
   },
 
   // 网格
@@ -128,6 +256,7 @@ Object.assign(Three.prototype, {
     this.initScene();
     this.initThree();
     this.initCamera();
+    // this.initControls();
     this.initLight();
     this.initObject();
     this.initEvent();
