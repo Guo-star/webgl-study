@@ -84,8 +84,8 @@
       texture.needsUpdate = true;
     })
 
-    var Objloader = new THREE.OBJLoader(manager);
-    Objloader.load("./model/BUS.obj", function (object) {
+    var Objloader = new THREE.FBXLoader(manager);
+    Objloader.load("./model/bus.fbx", function (object) {
       mesh = object;
       console.log(object)
       var Meshname;
@@ -95,19 +95,19 @@
           //   child.material.map = texture; 
           // }
           Meshname = child.name
-          console.log(Meshname)
+          // console.log(Meshname)
 
-          if (Meshname == "plastic") { // 车窗边框
-            child.material.color.set(0x000000)
-          } else if (Meshname == "backlght") { // 尾灯
-            // child.material.color.set(0xff0000)
-          } else if (Meshname == "black") { // 缝隙
-            child.material.color.set(0x000000)
-          } else if (Meshname == "body") { // 车体
-            child.material.color.set(0x7b88c0)
-          } else if (Meshname == "body_blk") { // 顶窗
-            child.material.color.set(0x8593c2)
-          }
+          // if (Meshname == "plastic") { // 车窗边框
+          //   child.material.color.set(0x000000)
+          // } else if (Meshname == "backlght") { // 尾灯
+          //   // child.material.color.set(0xff0000)
+          // } else if (Meshname == "black") { // 缝隙
+          //   child.material.color.set(0x000000)
+          // } else if (Meshname == "body") { // 车体
+          //   child.material.color.set(0x7b88c0)
+          // } else if (Meshname == "body_blk") { // 顶窗
+          //   child.material.color.set(0x8593c2)
+          // }
         }
       })
       scene.add(object);

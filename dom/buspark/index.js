@@ -50,8 +50,8 @@ Object.assign(Three.prototype, {
 
   // 灯光
   initLight: function () {
-    var light = new THREE.AmbientLight(0xFF0000);
-    light.position.set(100, 100, 200);
+    var light = new THREE.AmbientLight(0xffffff);
+    // light.position.set(100, 100, 200);
     this.scene.add(light);
   },
 
@@ -76,10 +76,16 @@ Object.assign(Three.prototype, {
       side: THREE.DoubleSide
     })
 
+    // 柱子材质
+    var pillarMaterial1 = new THREE.MeshBasicMaterial({
+      color: 0x879596,
+      side: THREE.DoubleSide
+    })
+
     // 全局组
     var globalGroup = this.globalGroup = new THREE.Group();
     // 公共组
-    var parkGroup = new THREE.Group();
+    var parkGroup = this.parkGroup = new THREE.Group();
 
     // 地板
     mesh = new THREE.Mesh(this.drawShape(floorData), ShapeMaterial);
@@ -92,25 +98,48 @@ Object.assign(Three.prototype, {
     }
 
     // 墙壁 中
-    var geometry = new THREE.BoxGeometry(1134, 10, 100);
+    var geometry = new THREE.BoxGeometry(1134, 2.4, 60);
     mesh = new THREE.Mesh(geometry, wallMaterial);
     var box = new THREE.Box3().setFromObject(mesh);
     mesh.position.set(720, 414.4, -box.max.z);
     parkGroup.add(mesh)
 
     // 墙壁 上
-    geometry = new THREE.BoxGeometry(1627.51, 10, 100);
+    geometry = new THREE.BoxGeometry(1627.51, 2.4, 60);
     mesh = new THREE.Mesh(geometry, wallMaterial);
     box = new THREE.Box3().setFromObject(mesh);
     mesh.position.set(box.max.x, box.max.y, -box.max.z);
     parkGroup.add(mesh)
-    
+
     // 墙壁 下
     mesh = new THREE.Mesh(geometry, wallMaterial);
     mesh.position.set(box.max.x, 954, -box.max.z);
     parkGroup.add(mesh)
 
+    // 柱子
+    var pillarGroup = new THREE.Group();
+    var pillarGeometry = new THREE.BoxGeometry(8, 8, 30);
+    var mesh1 = new THREE.Mesh(pillarGeometry, pillarMaterial1);
+    pillarGroup.add(mesh1);
+    var mesh2 = new THREE.Mesh(pillarGeometry, wallMaterial);
+    mesh1.position.z = 30;
+    pillarGroup.add(mesh2);
+    var pillar;
 
+    for (var j = 0; j < 4; j++) {
+      for (var i = 0; i < 8; i++) {
+        pillar = pillarGroup.clone();
+        // console.log(pillar)
+        if (j == 2) {
+          pillar.position.set(i * 126 + 280, j * 126 + 163, -44);
+        }else if (j == 3){
+          pillar.position.set(i * 126 + 280, j * 126 + 170, -44);
+        }else{
+          pillar.position.set(i * 126 + 280, j * 126 + 160, -44);
+        }
+        parkGroup.add(pillar);
+      }
+    }
 
     // 包围和
     var boxHelper = new THREE.BoxHelper(parkGroup, 0xe2e3de);
@@ -168,7 +197,7 @@ Object.assign(Three.prototype, {
     // 鼠标滚轮
     document.addEventListener('mousewheel', function (event) {
       if (event.wheelDelta) {
-        var factor = 10;
+        var factor = 40;
         //将鼠标的屏幕坐标转换为NDC坐标
         var mX = (event.clientX / _this.width) * 2 - 1;
         var mY = -(event.clientY / _this.height) * 2 + 1;
@@ -218,8 +247,8 @@ Object.assign(Three.prototype, {
       // 相机向量
       var v1 = new THREE.Vector3(x, y, z);
 
-      var cameraRound = 10;
-      var deltaX = (event.clientX - mouseX) / 279;
+      var cameraRound = 90;
+      var deltaX = (event.clientX - mouseX) / 270;
       var deltaY = (event.clientY - mouseY) / 270;
       mouseX = event.clientX;
       mouseY = event.clientY;
@@ -234,6 +263,25 @@ Object.assign(Three.prototype, {
   initGrid: function () {
     var helper = new THREE.GridHelper(1000, 50, 0x0000ff, 0x808080);
     this.scene.add(helper);
+  },
+
+  // 模型导入
+  initModel: function () {
+    var manager = new THREE.LoadingManager();
+    var fbxLoader = new THREE.FBXLoader(manager);
+    var _this = this;
+    fbxLoader.load('./busFBX.FBX', function (obj) {
+      obj.rotateZ(Math.PI / 2);
+      obj.rotateY(Math.PI / 2);
+      var model;
+      for (var i = 0; i < centerData.length; i++) { //centerData.length
+        model = obj.clone();
+        model.position.set(centerData[i][0], centerData[i][1], -2.7);
+        _this.parkGroup.add(model);
+      }
+
+      _this.animation();
+    })
   },
 
   // 帧循环
@@ -261,6 +309,7 @@ Object.assign(Three.prototype, {
     this.initObject();
     this.initEvent();
     // this.initGrid();
-    this.animation();
+    // this.animation();
+    this.initModel();
   }
 })
