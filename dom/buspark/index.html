@@ -36,17 +36,18 @@
 <script src="./three.js"></script>
 <script src="./inflate.min.js"></script>
 <script src="./FBXLoader.js"></script>
-<!-- <script src="./OrbitControls.js"></script> -->
+<script src="./OBJLoader.js"></script>
+<script src="./OrbitControls.js"></script>
 <script src="./data.js"></script>
 <script src="./index.js"></script>
 <script>
   var Three = new Three("myCanvas");
 
-  // function render() {
-  //   Three.animation();
-  //   requestAnimationFrame(render)
-  // }
-  // render()
+  function render() {
+    Three.animation();
+    requestAnimationFrame(render)
+  }
+  render()
 </script>
 
 </html>

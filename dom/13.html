@@ -87,7 +87,7 @@
     var Objloader = new THREE.FBXLoader(manager);
     Objloader.load("./model/bus.fbx", function (object) {
       mesh = object;
-      console.log(object)
+      // console.log(object)
       var Meshname;
       object.traverse(function (child) {
         if (child instanceof THREE.Mesh) {

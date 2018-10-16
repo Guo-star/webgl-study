@@ -6,12 +6,13 @@ function Three(el) {
 Object.assign(Three.prototype, {
   // 渲染器 
   initThree: function () {
+    var _this = this;
     var content = this.content = document.getElementById(this.el);
     this.width = content.clientWidth;
     this.height = content.clientHeight;
 
     var renderer = this.renderer = new THREE.WebGLRenderer({
-      antialias: true
+      antialias: false
     });
 
     renderer.setSize(this.width, this.height);
@@ -19,8 +20,13 @@ Object.assign(Three.prototype, {
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.autoClear = true;
     renderer.sortObjects = false;
+    // renderer.shadowMapEnabled = true; // 告诉渲染器需要阴影
 
     content.appendChild(renderer.domElement);
+
+    // 鼠标投手
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
 
     var stats = this.stats = new Stats();
     stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -36,10 +42,16 @@ Object.assign(Three.prototype, {
 
   // 交互
   initControls: function () {
-    var controls = this.controls = new THREE.OrbitControls(this.camera);
-    console.log(controls)
-    controls.enableZoom = true;
-    controls.autoRotate = true;
+    var _this = this;
+    var controls = this.controls = new THREE.OrbitControls(this.camera, this.content);
+    controls.target = new THREE.Vector3(0, 0, 0); //控制焦点
+    controls.enablePan = true;
+
+    controls.addEventListener('change', function () {
+      // console.log(_this)3dmax怎么给材质变颜色吗
+      // _this.animation();
+    })
+    // controls.autoRotate = true;
   },
 
   // 场景
@@ -50,94 +62,106 @@ Object.assign(Three.prototype, {
 
   // 灯光
   initLight: function () {
-    var light = new THREE.AmbientLight(0xffffff);
-    // light.position.set(100, 100, 200);
-    this.scene.add(light);
+    this.scene.add(new THREE.AmbientLight(0xffffff));
+    // var light = new THREE.SpotLight(0xffffff);
+    // light.position.set(this.camera.pos);
+    // light.castShadow = true;
+    // this.scene.add(light);
   },
 
   // 几何形
   initObject: function () {
     var mesh, boxHelper;
-
-    // 泊位材质
-    var LineMaterial = new THREE.LineBasicMaterial({
-      linewidth: 2,
-      color: 0xe2e3de
-    })
-    // 地板材质
-    var ShapeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xabb7b7,
-      side: THREE.DoubleSide
-    });
-
-    // 墙壁材质
-    var wallMaterial = new THREE.MeshBasicMaterial({
-      color: 0xe2e3de,
-      side: THREE.DoubleSide
-    })
-
-    // 柱子材质
-    var pillarMaterial1 = new THREE.MeshBasicMaterial({
-      color: 0x879596,
-      side: THREE.DoubleSide
-    })
-
     // 全局组
     var globalGroup = this.globalGroup = new THREE.Group();
-    // 公共组
+    // 场站组
     var parkGroup = this.parkGroup = new THREE.Group();
 
     // 地板
-    mesh = new THREE.Mesh(this.drawShape(floorData), ShapeMaterial);
-    parkGroup.add(mesh)
+    mesh = new THREE.Mesh(new THREE.ShapeBufferGeometry(this.drawShape(floorData)), new THREE.MeshBasicMaterial({
+      color: 0xabb7b7,
+      side: THREE.DoubleSide
+    }));
+    mesh.position.z = 1;
+    parkGroup.add(mesh);
 
     // 泊位
+    var berthShape;
     for (var i = 0; i < busParkData.length; i++) {
-      mesh = new THREE.Line(this.drawLine(busParkData[i]), LineMaterial);
+      berthShape = this.drawShape(busParkData[i]);
+      mesh = new THREE.Mesh(new THREE.ShapeBufferGeometry(berthShape), new THREE.MeshBasicMaterial({
+        color: 0xabb7b7,
+        side: THREE.DoubleSide
+      }));
+      mesh.name = "berth";
       parkGroup.add(mesh)
+
+      var points = berthShape.getPoints();
+      mesh = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({
+        linewidth: 10,
+        color: 0xffffff
+      }));
+      parkGroup.add(mesh);
     }
 
     // 墙壁 中
     var geometry = new THREE.BoxGeometry(1134, 2.4, 60);
-    mesh = new THREE.Mesh(geometry, wallMaterial);
+    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+      color: 0xe2e3de
+    }));
+    mesh.castShadow = true;
     var box = new THREE.Box3().setFromObject(mesh);
     mesh.position.set(720, 414.4, -box.max.z);
     parkGroup.add(mesh)
 
     // 墙壁 上
     geometry = new THREE.BoxGeometry(1627.51, 2.4, 60);
-    mesh = new THREE.Mesh(geometry, wallMaterial);
+    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+      color: 0xe2e3de
+    }));
+    mesh.castShadow = true;
     box = new THREE.Box3().setFromObject(mesh);
     mesh.position.set(box.max.x, box.max.y, -box.max.z);
     parkGroup.add(mesh)
 
     // 墙壁 下
-    mesh = new THREE.Mesh(geometry, wallMaterial);
+    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+      color: 0xe2e3de
+    }));
+    mesh.castShadow = true;
     mesh.position.set(box.max.x, 954, -box.max.z);
     parkGroup.add(mesh)
 
     // 柱子
     var pillarGroup = new THREE.Group();
     var pillarGeometry = new THREE.BoxGeometry(8, 8, 30);
-    var mesh1 = new THREE.Mesh(pillarGeometry, pillarMaterial1);
-    pillarGroup.add(mesh1);
-    var mesh2 = new THREE.Mesh(pillarGeometry, wallMaterial);
-    mesh1.position.z = 30;
-    pillarGroup.add(mesh2);
-    var pillar;
+    var pillar, mesh1, mesh2;
 
     for (var j = 0; j < 4; j++) {
       for (var i = 0; i < 8; i++) {
-        pillar = pillarGroup.clone();
-        // console.log(pillar)
+        mesh1 = new THREE.Mesh(pillarGeometry, new THREE.MeshBasicMaterial({
+          color: 0x879596
+        }));
+        mesh1.castShadow = true;
+
+        mesh2 = new THREE.Mesh(pillarGeometry, new THREE.MeshBasicMaterial({
+          color: 0xe2e3de
+        }));
+        mesh2.castShadow = true;
+        mesh1.position.z = 30;
+
         if (j == 2) {
-          pillar.position.set(i * 126 + 280, j * 126 + 163, -44);
-        }else if (j == 3){
-          pillar.position.set(i * 126 + 280, j * 126 + 170, -44);
-        }else{
-          pillar.position.set(i * 126 + 280, j * 126 + 160, -44);
+          mesh1.position.set(i * 126 + 280, j * 126 + 163, -14);
+          mesh2.position.set(i * 126 + 280, j * 126 + 163, -44);
+        } else if (j == 3) {
+          mesh1.position.set(i * 126 + 280, j * 126 + 170, -14);
+          mesh2.position.set(i * 126 + 280, j * 126 + 170, -44);
+        } else {
+          mesh1.position.set(i * 126 + 280, j * 126 + 160, -14);
+          mesh2.position.set(i * 126 + 280, j * 126 + 160, -44);
         }
-        parkGroup.add(pillar);
+        pillarGroup.add(mesh1);
+        pillarGroup.add(mesh2);
       }
     }
 
@@ -152,7 +176,7 @@ Object.assign(Three.prototype, {
     center.multiplyScalar(-1);
     parkGroup.position.set(center.x, center.y, center.z);
 
-    // parkGroup.add(boxHelper)
+    parkGroup.add(pillarGroup)
     globalGroup.add(parkGroup);
     this.scene.add(globalGroup);
   },
@@ -164,8 +188,9 @@ Object.assign(Three.prototype, {
     rectShape.lineTo(position[2], position[3]);
     rectShape.lineTo(position[4], position[5]);
     rectShape.lineTo(position[6], position[7]);
-
-    return new THREE.ShapeGeometry(rectShape);
+    rectShape.lineTo(position[0], position[1]);
+    return rectShape;
+    // return new THREE.ShapeBufferGeometry(rectShape);
   },
 
   // 画四边形 边线
@@ -194,6 +219,28 @@ Object.assign(Three.prototype, {
       _this.renderer.setSize(_this.width, _this.height);
     }, false);
 
+    // 鼠标选中模型
+    document.addEventListener('click', function (event) {
+      //通过鼠标点击的位置计算出raycaster所需要的点的位置，以屏幕中心为原点，值的范围为-1到1.
+      _this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      _this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      // 通过鼠标点的位置和当前相机的矩阵计算出raycaster
+      _this.raycaster.setFromCamera(_this.mouse, _this.camera);
+
+      var intersects = _this.raycaster.intersectObjects(_this.scene.children, true);
+      if (intersects.length > 0) {
+        intersects.forEach(item => {
+          if (item.object.name === "berth") {// || item.object.groupName === "bus"
+            item.object.material.color.set(0xff0000);
+          }
+        });
+      } else {
+
+      }
+    }, false);
+
+    return;
     // 鼠标滚轮
     document.addEventListener('mousewheel', function (event) {
       if (event.wheelDelta) {
@@ -255,7 +302,7 @@ Object.assign(Three.prototype, {
 
       _this.globalGroup.rotateX(deltaY)
       _this.globalGroup.rotateY(deltaX)
-      _this.animation();
+      // _this.animation();
     }
   },
 
@@ -270,13 +317,39 @@ Object.assign(Three.prototype, {
     var manager = new THREE.LoadingManager();
     var fbxLoader = new THREE.FBXLoader(manager);
     var _this = this;
+    fbxLoader.load('./arrows.FBX',function(obj){
+      obj.rotateX(-Math.PI / 2);
+      // obj.position.set(0, 0, -30);
+      obj.position.set(centerData[79][0], centerData[79][1], -30);
+      _this.parkGroup.add(obj);
+    })
     fbxLoader.load('./busFBX.FBX', function (obj) {
+      // obj.traverse(function (child) {
+      //   if (child instanceof THREE.Mesh) {
+      //     child.groupName = "bus";
+      //     console.log(child)
+      //     //MultiMat_013 车的主体
+      //     //busred001 车灯
+      //     // if (child.name == "MultiMat_013") {
+      //       // child.material[2].transparent = true;
+      //       // child.material[2].opacity = 0.2;
+      //       // child.material[0].color.set(0xff0000)
+      //     // }
+      //   }
+      // })
+
       obj.rotateZ(Math.PI / 2);
       obj.rotateY(Math.PI / 2);
       var model;
-      for (var i = 0; i < centerData.length; i++) { //centerData.length
+      for (var i = 70; i < centerData.length; i++) { //centerData.length
         model = obj.clone();
-        model.position.set(centerData[i][0], centerData[i][1], -2.7);
+        // 添加自定义属性
+        model.traverse(function (child) {
+          if (child instanceof THREE.Mesh) {
+            child.groupName = "bus";
+          }
+        })
+        model.position.set(centerData[i][0], centerData[i][1], 0.09);
         _this.parkGroup.add(model);
       }
 
@@ -295,6 +368,7 @@ Object.assign(Three.prototype, {
   render: function () {
     this.stats.begin();
     this.renderer.clear();
+    this.controls.update();
     // this.mesh.rotateY(0.01);
     this.renderer.render(this.scene, this.camera);
   },
@@ -304,12 +378,12 @@ Object.assign(Three.prototype, {
     this.initScene();
     this.initThree();
     this.initCamera();
-    // this.initControls();
+    this.initControls();
     this.initLight();
     this.initObject();
-    this.initEvent();
     // this.initGrid();
     // this.animation();
     this.initModel();
+    this.initEvent();
   }
 })
