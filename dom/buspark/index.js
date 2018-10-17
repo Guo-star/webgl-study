@@ -12,7 +12,7 @@ Object.assign(Three.prototype, {
     this.height = content.clientHeight;
 
     var renderer = this.renderer = new THREE.WebGLRenderer({
-      antialias: false
+      antialias: true
     });
 
     renderer.setSize(this.width, this.height);
@@ -20,7 +20,7 @@ Object.assign(Three.prototype, {
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.autoClear = true;
     renderer.sortObjects = false;
-    // renderer.shadowMapEnabled = true; // 告诉渲染器需要阴影
+    renderer.shadowMap.enabled = true; // 告诉渲染器需要阴影
 
     content.appendChild(renderer.domElement);
 
@@ -46,12 +46,6 @@ Object.assign(Three.prototype, {
     var controls = this.controls = new THREE.OrbitControls(this.camera, this.content);
     controls.target = new THREE.Vector3(0, 0, 0); //控制焦点
     controls.enablePan = true;
-
-    controls.addEventListener('change', function () {
-      // console.log(_this)3dmax怎么给材质变颜色吗
-      // _this.animation();
-    })
-    // controls.autoRotate = true;
   },
 
   // 场景
@@ -63,19 +57,38 @@ Object.assign(Three.prototype, {
   // 灯光
   initLight: function () {
     this.scene.add(new THREE.AmbientLight(0xffffff));
-    // var light = new THREE.SpotLight(0xffffff);
-    // light.position.set(this.camera.pos);
-    // light.castShadow = true;
-    // this.scene.add(light);
+    var light = new THREE.SpotLight(0xffffff);
+    light.position.set(0, 20, 20);
+    light.castShadow = true;
+    this.scene.add(light);
+  },
+
+  // 自定义形状
+  addShape: function (Shape, color, x, y, z, rx, ry, rz, s) {
+    var curveGeometry = new THREE.Geometry().setFromPoints(Shape.getPoints(20))
+
+    var line = new THREE.Line(curveGeometry, new THREE.LineBasicMaterial({
+      color: color
+    }));
+
+    line.position.set(x, y, z - 25);
+    line.rotation.set(rx, ry, rz);
+    line.scale.set(s, s, s);
+    return line;
   },
 
   // 几何形
   initObject: function () {
-    var mesh, boxHelper;
+    var mesh, boxHelper, geometry;
     // 全局组
     var globalGroup = this.globalGroup = new THREE.Group();
     // 场站组
     var parkGroup = this.parkGroup = new THREE.Group();
+
+    geometry = new THREE.Shape();
+    geometry.moveTo(0, 0);
+    geometry.bezierCurveTo(100, 200, 200, 200, 300, 0);
+    this.scene.add(this.addShape(geometry, 0xff0000, 0, 0, 0, 0, 0, 0, 1));
 
     // 地板
     mesh = new THREE.Mesh(new THREE.ShapeBufferGeometry(this.drawShape(floorData)), new THREE.MeshBasicMaterial({
@@ -83,6 +96,7 @@ Object.assign(Three.prototype, {
       side: THREE.DoubleSide
     }));
     mesh.position.z = 1;
+    mesh.receiveShadow = true;
     parkGroup.add(mesh);
 
     // 泊位
@@ -104,8 +118,58 @@ Object.assign(Three.prototype, {
       parkGroup.add(mesh);
     }
 
+    // 方向标注 箭头
+    geometry = new THREE.ShapeBufferGeometry(this.drawArrows());
+    for (var i = 0; i < arrowsData.length; i++) {
+      mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        side: THREE.DoubleSide
+      }));
+      mesh.position.set(arrowsData[i][0], arrowsData[i][1], 0);
+      parkGroup.add(mesh)
+    }
+
+    // 办公区域
+    geometry = new THREE.BoxGeometry(2.4, 954, 60);
+    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+      color: 0xe2e3de
+    }));
+    mesh.castShadow = true;
+    box = new THREE.Box3().setFromObject(mesh);
+    mesh.position.set(1430, box.max.y, -box.max.z);
+    parkGroup.add(mesh)
+
+    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+      color: 0xe2e3de
+    }));
+    mesh.castShadow = true;
+    mesh.position.set(1627.51, box.max.y, -box.max.z);
+    parkGroup.add(mesh)
+
+    var fontLoader = new THREE.FontLoader();
+    fontLoader.load("./fonts/SimHei_Regular.json", function (res) {
+      geometry = new THREE.TextGeometry("办公区域", {
+        size: 60, //字号大小，一般为大写字母的高度
+        height: 10, //文字的厚度
+        weight: 'normal', //值为'normal'或'bold'，表示是否加粗
+        font: res, //字体，默认是'helvetiker'，需对应引用的字体文件
+        style: 'normal', //值为'normal'或'italics'，表示是否斜体
+        bevelThickness: 1, //倒角厚度
+        bevelSize: 1, //倒角宽度
+        curveSegments: 30, //弧线分段数，使得文字的曲线更加光滑
+        bevelEnabled: true, //布尔值，是否使用倒角，意为在边缘处斜切
+      });
+      mesh = new THREE.Mesh(geometry, new THREE.LineBasicMaterial({
+        color: 0xe2e3de
+      }));
+      mesh.rotateZ(Math.PI / 2);
+      mesh.rotateX(Math.PI);
+      mesh.position.set(1500, 320, -1)
+      parkGroup.add(mesh)
+    })
+
     // 墙壁 中
-    var geometry = new THREE.BoxGeometry(1134, 2.4, 60);
+    geometry = new THREE.BoxGeometry(1134, 2.4, 60);
     mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
       color: 0xe2e3de
     }));
@@ -205,6 +269,24 @@ Object.assign(Three.prototype, {
     return new THREE.BufferGeometry().setFromPoints(points);
   },
 
+  // 画箭头 
+  drawArrows: function () {
+    var Rwidth = 60,
+      Rheight = 6,
+      Twidht = 10,
+      Theight = 14;
+    var rectShape = new THREE.Shape();
+    rectShape.moveTo(-(Rwidth + Twidht) / 2, Rheight / 2);
+    rectShape.lineTo((Rwidth + Twidht) / 2 - Twidht, Rheight / 2);
+    rectShape.lineTo((Rwidth + Twidht) / 2 - Twidht, Theight / 2);
+    rectShape.lineTo((Rwidth + Twidht) / 2, 0);
+    rectShape.lineTo((Rwidth + Twidht) / 2 - Twidht, -Theight / 2);
+    rectShape.lineTo((Rwidth + Twidht) / 2 - Twidht, -Rheight / 2);
+    rectShape.lineTo(-(Rwidth + Twidht) / 2, -Rheight / 2);
+    rectShape.lineTo(-(Rwidth + Twidht) / 2, Rheight / 2);
+    return rectShape;
+  },
+
   // 事件
   initEvent: function () {
     var _this = this;
@@ -231,7 +313,7 @@ Object.assign(Three.prototype, {
       var intersects = _this.raycaster.intersectObjects(_this.scene.children, true);
       if (intersects.length > 0) {
         intersects.forEach(item => {
-          if (item.object.name === "berth") {// || item.object.groupName === "bus"
+          if (item.object.name === "berth") { // || item.object.groupName === "bus"
             item.object.material.color.set(0xff0000);
           }
         });
@@ -317,26 +399,13 @@ Object.assign(Three.prototype, {
     var manager = new THREE.LoadingManager();
     var fbxLoader = new THREE.FBXLoader(manager);
     var _this = this;
-    fbxLoader.load('./arrows.FBX',function(obj){
+    fbxLoader.load('./arrows.FBX', function (obj) {
       obj.rotateX(-Math.PI / 2);
       // obj.position.set(0, 0, -30);
       obj.position.set(centerData[79][0], centerData[79][1], -30);
       _this.parkGroup.add(obj);
     })
     fbxLoader.load('./busFBX.FBX', function (obj) {
-      // obj.traverse(function (child) {
-      //   if (child instanceof THREE.Mesh) {
-      //     child.groupName = "bus";
-      //     console.log(child)
-      //     //MultiMat_013 车的主体
-      //     //busred001 车灯
-      //     // if (child.name == "MultiMat_013") {
-      //       // child.material[2].transparent = true;
-      //       // child.material[2].opacity = 0.2;
-      //       // child.material[0].color.set(0xff0000)
-      //     // }
-      //   }
-      // })
 
       obj.rotateZ(Math.PI / 2);
       obj.rotateY(Math.PI / 2);
