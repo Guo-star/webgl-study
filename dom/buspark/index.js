@@ -21,6 +21,7 @@ Object.assign(Three.prototype, {
     renderer.autoClear = true;
     renderer.sortObjects = false;
     renderer.shadowMap.enabled = true; // 告诉渲染器需要阴影
+    renderer.shadowMap.type = THREE.PCFShadowMap;
 
     content.appendChild(renderer.domElement);
 
@@ -57,24 +58,17 @@ Object.assign(Three.prototype, {
   // 灯光
   initLight: function () {
     this.scene.add(new THREE.AmbientLight(0xffffff));
-    var light = new THREE.SpotLight(0xffffff);
-    light.position.set(0, 20, 20);
-    light.castShadow = true;
-    this.scene.add(light);
-  },
-
-  // 自定义形状
-  addShape: function (Shape, color, x, y, z, rx, ry, rz, s) {
-    var curveGeometry = new THREE.Geometry().setFromPoints(Shape.getPoints(20))
-
-    var line = new THREE.Line(curveGeometry, new THREE.LineBasicMaterial({
-      color: color
-    }));
-
-    line.position.set(x, y, z - 25);
-    line.rotation.set(rx, ry, rz);
-    line.scale.set(s, s, s);
-    return line;
+    // var light = new THREE.PointLight(0xffffff, 1, 100);
+    // light.position.set(0, 30, 10);
+    // light.castShadow = true;
+    // light.shadow.camera.near = 0.1;
+    // light.shadow.camera.far = 1000;
+    // this.scene.add(light);
+    // var mesh = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial({
+    //   color: 0xFF4444
+    // }));
+    // mesh.position.set(0, 30, 10);
+    // this.scene.add(mesh);
   },
 
   // 几何形
@@ -84,11 +78,6 @@ Object.assign(Three.prototype, {
     var globalGroup = this.globalGroup = new THREE.Group();
     // 场站组
     var parkGroup = this.parkGroup = new THREE.Group();
-
-    geometry = new THREE.Shape();
-    geometry.moveTo(0, 0);
-    geometry.bezierCurveTo(100, 200, 200, 200, 300, 0);
-    this.scene.add(this.addShape(geometry, 0xff0000, 0, 0, 0, 0, 0, 0, 1));
 
     // 地板
     mesh = new THREE.Mesh(new THREE.ShapeBufferGeometry(this.drawShape(floorData)), new THREE.MeshBasicMaterial({
@@ -165,6 +154,7 @@ Object.assign(Three.prototype, {
       mesh.rotateZ(Math.PI / 2);
       mesh.rotateX(Math.PI);
       mesh.position.set(1500, 320, -1)
+      mesh.castShadow = true;
       parkGroup.add(mesh)
     })
 
