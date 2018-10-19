@@ -1,6 +1,42 @@
 var scene, camera, renderer, light;
 
 var keyboard = {};
+var player = {
+  height: 1.8,
+  speed: 0.2,
+  turnSpeed: Math.PI * 0.02,
+  canShoot: 0
+};
+
+
+var loadingManager = null;
+
+var models = {
+  tent: {
+    obj: "models/Tent_Poles_01.obj",
+    mtl: "models/Tent_Poles_01.mtl",
+    mesh: null
+  },
+  campfire: {
+    obj: "models/Campfire_01.obj",
+    mtl: "models/Campfire_01.mtl",
+    mesh: null
+  },
+  pirateship: {
+    obj: "models/Pirateship.obj",
+    mtl: "models/Pirateship.mtl",
+    mesh: null
+  },
+  uzi: {
+    obj: "models/uziGold.obj",
+    mtl: "models/uziGold.mtl",
+    mesh: null,
+    castShadow: false
+  }
+};
+
+// Meshes index
+var meshes = {};
 
 var canvas = document.getElementById("canvas-frame"),
   width = canvas.clientWidth,
@@ -25,6 +61,16 @@ function init() {
   light.shadow.camera.far = 25;
   scene.add(light);
 
+  // 加载管理
+  loadingManager = new THREE.LoadingManager();
+  loadingManager.onProgress = function (item, loaded, total) {
+    console.log(item, loaded, total);
+  };
+  loadingManager.onLoad = function () {
+    console.log("loaded all resources");
+    onResourcesLoaded()
+  };
+
   // 几何体
   geometry();
 
@@ -45,11 +91,27 @@ function init() {
 function animate() {
   requestAnimationFrame(animate);
 
-  // 上 38，下 40，左 37，右 39
-  if (keyboard[37]) {
+  if (keyboard[87]) { // W
+    camera.position.x -= Math.sin(camera.rotation.y) * player.speed;
+    camera.position.z -= -Math.cos(camera.rotation.y) * player.speed;
+  }
+  if (keyboard[83]) { // S
+    camera.position.x += Math.sin(camera.rotation.y) * player.speed;
+    camera.position.z += -Math.cos(camera.rotation.y) * player.speed;
+  }
+  if (keyboard[65]) { // A
+    camera.position.x += Math.sin(camera.rotation.y + Math.PI / 2) * player.speed;
+    camera.position.z += -Math.cos(camera.rotation.y + Math.PI / 2) * player.speed;
+  }
+  if (keyboard[68]) { // D
+    camera.position.x += Math.sin(camera.rotation.y - Math.PI / 2) * player.speed;
+    camera.position.z += -Math.cos(camera.rotation.y - Math.PI / 2) * player.speed;
+  }
+
+  if (keyboard[37]) { // <-
     camera.rotateY(Math.PI * 0.02);
   }
-  if (keyboard[39]) {
+  if (keyboard[39]) { // ->
     camera.rotateY(-Math.PI * 0.02);
   }
 
@@ -100,22 +162,83 @@ function geometry() {
   crateMesh.position.set(2.5, 1.5, 2.5)
   scene.add(crateMesh);
 
-  //帐篷
-  var mtlLoader = new THREE.MTLLoader();
-  var objLoader = new THREE.OBJLoader();
-  mtlLoader.load('./models/Tent_Poles_01.mtl',function(materials){
-    objLoader.setMaterials(materials);
-    objLoader.load('./models/Tent_Poles_01.obj',function(tentMesh){
-      tentMesh.traverse(function(node){
-        if(node instanceof THREE.Mesh){
-          node.castShadow = true;
-        }
+  var mtlLoader = new THREE.MTLLoader(loadingManager);
+  var objLoader = new THREE.OBJLoader(loadingManager);
+  // 导入模型
+  for (var _key in models) {
+    (function (key) {
+      mtlLoader.load(models[key].mtl, function (materials) {
+        materials.preload();
+        objLoader.setMaterials(materials);
+        objLoader.load(models[key].obj, function (mesh) {
+          mesh.traverse(function (node) {
+            if (node instanceof THREE.Mesh) {
+              if ('castShadow' in models[key])
+                node.castShadow = models[key].castShadow;
+              else
+                node.castShadow = true;
+
+              if ('receiveShadow' in models[key])
+                node.receiveShadow = models[key].receiveShadow;
+              else
+                node.receiveShadow = true;
+            }
+          });
+
+          models[key].mesh = mesh;
+        })
       })
-      tentMesh.position.set(-5,0,4);
-      tentMesh.rotateY(-Math.PI/4);
-      scene.add(tentMesh);
-    })
-  });
+    })(_key)
+  }
+
+
+  // var mtlLoader = new THREE.MTLLoader();
+  // var objLoader = new THREE.OBJLoader();
+  // mtlLoader.load('./models/Tent_Poles_01.mtl', function (materials) {
+  //   objLoader.setMaterials(materials);
+  //   objLoader.load('./models/Tent_Poles_01.obj', function (tentMesh) {
+  //     tentMesh.traverse(function (node) {
+  //       if (node instanceof THREE.Mesh) {
+  //         node.castShadow = true;
+  //       }
+  //     })
+  //     tentMesh.position.set(-5, 0, 4);
+  //     tentMesh.rotateY(-Math.PI / 4);
+  //     scene.add(tentMesh);
+  //   })
+  // });
+}
+
+function onResourcesLoaded() {
+  // Clone models into meshes.
+  meshes["tent1"] = models.tent.mesh.clone();
+  meshes["tent2"] = models.tent.mesh.clone();
+  meshes["campfire1"] = models.campfire.mesh.clone();
+  meshes["campfire2"] = models.campfire.mesh.clone();
+  meshes["pirateship"] = models.pirateship.mesh.clone();
+
+  // Reposition individual meshes, then add meshes to scene
+  meshes["tent1"].position.set(-5, 0, 4);
+  scene.add(meshes["tent1"]);
+
+  meshes["tent2"].position.set(-8, 0, 4);
+  scene.add(meshes["tent2"]);
+
+  meshes["campfire1"].position.set(-5, 0, 1);
+  meshes["campfire2"].position.set(-8, 0, 1);
+
+  scene.add(meshes["campfire1"]);
+  scene.add(meshes["campfire2"]);
+
+  meshes["pirateship"].position.set(-11, -1, 1);
+  meshes["pirateship"].rotation.set(0, Math.PI, 0); // Rotate it to face the other way.
+  scene.add(meshes["pirateship"]);
+
+  // player weapon
+  meshes["playerweapon"] = models.uzi.mesh.clone();
+  meshes["playerweapon"].position.set(0, 2, 0);
+  meshes["playerweapon"].scale.set(10, 10, 10);
+  scene.add(meshes["playerweapon"]);
 }
 
 
